@@ -71,7 +71,6 @@ class Student < ActiveRecord::Base
   scope :visible_for_students, -> {where 'visibility_id = ? or visibility_id = ?',VISIBILITYS.find_index('employers_and_students'),VISIBILITYS.find_index('students_only')} 
   scope :visible_for_employers, ->  { where('visibility_id > ? or visibility_id = ?', VISIBILITYS.find_index('employers_only'), VISIBILITYS.find_index('employers_and_students'))}
   scope :filter_semester, -> semester { where("semester IN (?)", semester.split(',').map(&:to_i)) }
-  scope :filter_programming_languages, -> programming_language_ids { joins(:programming_languages).where('programming_languages.id IN (?)', programming_language_ids).select("distinct students.*") }
   scope :filter_languages, -> language_ids { joins(:languages).where('languages.id IN (?)', language_ids).select("distinct students.*") }
   scope :filter_academic_program, -> academic_program_id { where('academic_program_id = ?', academic_program_id.to_f)}
   scope :filter_graduation, -> graduation_id { where('graduation_id >= ?', graduation_id.to_f)}
@@ -86,6 +85,19 @@ class Student < ActiveRecord::Base
           OR lower(xing) LIKE ?
           OR lower(linkedin) LIKE ?)
           ",   q.downcase, q.downcase, q.downcase, q.downcase, q.downcase, q.downcase, q.downcase, q.downcase)}
+
+  def self.filter_programming_languages(programming_language_ids)
+    requested_programming_language_ids = programming_language_ids.map(&:to_i)
+    fitting_student_ids = []
+    Student.all.map { |student| {student_id: student.id, student_proglangs: student.programming_languages} }.each { 
+      |student_id_proglangs| 
+        student_programming_languages_ids = student_id_proglangs[:student_proglangs].map(&:id).map(&:to_i)
+        if(requested_programming_language_ids.reject { |x| student_programming_languages_ids.include? x}.empty?)
+          fitting_student_ids << student_id_proglangs[:student_id]
+        end
+      }
+    where('"students"."id" IN (?)', fitting_student_ids)
+  end
 
   def application(job_offer)
     applications.where(job_offer: job_offer).first
@@ -201,8 +213,7 @@ class Student < ActiveRecord::Base
             start_date: start_date,
             end_date: end_date,
             current: current))
-        )
-      
+        )      
     end
   end
 
