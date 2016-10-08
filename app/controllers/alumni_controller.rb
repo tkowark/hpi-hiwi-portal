@@ -1,7 +1,7 @@
 class AlumniController < ApplicationController
   authorize_resource except: [:register, :link, :link_new, :show]
   skip_before_filter :signed_in_user, only: [:register, :link, :link_new, :index, :show]
-  before_action :set_alumni, only: [:show]
+  before_action :set_alumni, only: [:show, :update]
 
   has_scope :firstname, only: [:index], as: :firstname
   has_scope :lastname, only: [:index], as: :lastname
@@ -22,12 +22,20 @@ class AlumniController < ApplicationController
   end
 
   def create
-    alumni = Alumni.create_from_row alumni_params
+    alumni = Alumni.create_from_row_and_invite alumni_params, true
     if alumni == :created
       respond_and_redirect_to new_alumni_path, 'Alumni erfolgreich erstellt!'
     else
       @alumni = alumni
       render 'new'
+    end
+  end
+
+  def update
+    if @alumni.update alumni_params
+      respond_and_redirect_to @alumni, I18n.t('alumni.updated.successfully')
+    else
+      render_errors_and_action @alumni, I18n.t('alumni.updated.unsuccessfully')
     end
   end
 
@@ -37,13 +45,32 @@ class AlumniController < ApplicationController
       count, errors = 0, []
       CSV.foreach(params[:alumni_file].path, headers: true, header_converters: :symbol) do |row|
         count += 1
-        alumni = Alumni.create_from_row row
+        alumni = Alumni.create_from_row_and_invite row, true
         errors << alumni.errors.full_messages.first + '(' + count.to_s + ')' unless alumni == :created
       end
       if errors.any?
         notice = { error: 'The following lines (starting from 1) contain errors: ' + errors.join(', ')}
       else
         notice = 'Alumni erfolgreich importiert!'
+      end
+    end
+    respond_and_redirect_to new_alumni_path, notice
+  end
+
+  def merge_from_csv
+    require 'csv'
+    if params[:alumni_merge_file].present?
+      number, errors = 1, []
+      CSV.foreach(params[:alumni_merge_file].path, headers: true, header_converters: :symbol, quote_char: '"') do |row|
+        if row[:vorname] and row[:nachname]
+          number += 1
+          alumni = Alumni.merge_from_row row, false
+        end
+      end
+      if errors.any?
+        notice = { error: 'The following ' + errors.size.to_s + '/' + number.to_s + ' lines contain errors: ' + errors.join(", ")}
+      else
+        notice = 'Alumni erfolgreich zusammengeführt'
       end
     end
     respond_and_redirect_to new_alumni_path, notice
@@ -90,6 +117,8 @@ class AlumniController < ApplicationController
     alumni = Alumni.find_by_token! params[:token]
     user = User.find_by_email params[:session][:email]
     if user && user.authenticate(params[:session][:password])
+      student = Student.find(user.manifestation_id)
+      student.inherit_hidden_attributes alumni
       alumni.link user
       sign_in user
       if Alumni.email_invalid? params[:session][:email]
@@ -109,6 +138,7 @@ class AlumniController < ApplicationController
     end
     @user = User.new link_params
     student = Student.create! academic_program_id: Student::ACADEMIC_PROGRAMS.index('alumnus')
+    student.inherit_hidden_attributes @alumni
     @user.manifestation = student
     if @user.save
       @alumni.link @user
@@ -127,7 +157,7 @@ class AlumniController < ApplicationController
     end
 
     def alumni_params
-      params.require(:alumni).permit(:firstname, :lastname, :email, :alumni_email)
+      params[:alumni].permit(Alumni.column_names.map(&:to_sym))
     end
 
     def link_params

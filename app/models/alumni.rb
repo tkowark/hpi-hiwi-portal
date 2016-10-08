@@ -2,17 +2,34 @@
 #
 # Table name: alumnis
 #
-#  id           :integer          not null, primary key
-#  firstname    :string(255)
-#  lastname     :string(255)
-#  email        :string(255)      not null
-#  alumni_email :string(255)      not null
-#  token        :string(255)      not null
-#  created_at   :datetime
-#  updated_at   :datetime
+#  id                        :integer          not null, primary key
+#  firstname                 :string(255)
+#  lastname                  :string(255)
+#  email                     :string(255)      not null
+#  alumni_email              :string(255)      not null
+#  token                     :string(255)      not null
+#  created_at                :datetime
+#  updated_at                :datetime
+#  hidden_title              :string(255)
+#  hidden_birth_name         :string(255)
+#  hidden_graduation_id      :integer
+#  hidden_graduation_year    :integer
+#  hidden_private_email      :string(255)
+#  hidden_alumni_email       :string(255)
+#  hidden_additional_email   :string(255)
+#  hidden_last_employer      :string(255)
+#  hidden_current_position   :string(255)
+#  hidden_street             :string(255)
+#  hidden_location           :string(255)
+#  hidden_postcode           :string(255)
+#  hidden_country            :string(255)
+#  hidden_phone_number       :string(255)
+#  hidden_comment            :string(255)
+#  hidden_agreed_alumni_work :string(255)
 #
 
 class Alumni < ActiveRecord::Base
+  include AlumniMergeHelper
 
   validates :email, presence: true
   validates :alumni_email, presence: true, uniqueness: { case_sensitive: false }
@@ -23,14 +40,16 @@ class Alumni < ActiveRecord::Base
   scope :email, -> email {where("lower(email) LIKE ?", email.downcase)}
   scope :alumni_email, -> alumni_email {where("lower(alumni_email) LIKE ?", alumni_email.downcase)}
 
-  def self.create_from_row(row)
+  def self.create_from_row_and_invite(row, send_invitation)
     row[:firstname] ||= row[:alumni_email].split('.')[0].capitalize
     row[:lastname] ||= row[:alumni_email].split('.')[1].capitalize
     alumni = Alumni.new firstname: row[:firstname], lastname: row[:lastname], email: row[:email], alumni_email: row[:alumni_email]
     alumni.generate_unique_token
     if alumni.save
       begin
-        AlumniMailer.creation_email(alumni).deliver
+        if send_invitation
+          AlumniMailer.creation_email(alumni).deliver
+        end
         return :created
       rescue => e
         alumni.delete
@@ -38,6 +57,10 @@ class Alumni < ActiveRecord::Base
       end
     end
     return alumni
+  end
+
+  def self.merge_from_row(row)
+    AlumniMergeHelper.merge_from_row(row)
   end
 
   def self.email_invalid? email

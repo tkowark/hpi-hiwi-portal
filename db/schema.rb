@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20160412211730) do
+ActiveRecord::Schema.define(version: 20160912132740) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -19,11 +19,27 @@ ActiveRecord::Schema.define(version: 20160412211730) do
   create_table "alumnis", force: true do |t|
     t.string   "firstname"
     t.string   "lastname"
-    t.string   "email",        null: false
-    t.string   "alumni_email", null: false
-    t.string   "token",        null: false
+    t.string   "email",                     null: false
+    t.string   "alumni_email",              null: false
+    t.string   "token",                     null: false
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.string   "hidden_title"
+    t.string   "hidden_birth_name"
+    t.integer  "hidden_graduation_id"
+    t.integer  "hidden_graduation_year"
+    t.string   "hidden_private_email"
+    t.string   "hidden_alumni_email"
+    t.string   "hidden_additional_email"
+    t.string   "hidden_last_employer"
+    t.string   "hidden_current_position"
+    t.string   "hidden_street"
+    t.string   "hidden_location"
+    t.string   "hidden_postcode"
+    t.string   "hidden_country"
+    t.string   "hidden_phone_number"
+    t.string   "hidden_comment"
+    t.string   "hidden_agreed_alumni_work"
   end
 
   create_table "assignments", force: true do |t|
@@ -224,6 +240,16 @@ ActiveRecord::Schema.define(version: 20160412211730) do
     t.datetime "updated_at"
   end
 
+  create_table "sessions", force: true do |t|
+    t.string   "session_id", null: false
+    t.text     "data"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+  add_index "sessions", ["session_id"], name: "index_sessions_on_session_id", unique: true, using: :btree
+  add_index "sessions", ["updated_at"], name: "index_sessions_on_updated_at", using: :btree
+
   create_table "staffs", force: true do |t|
     t.integer  "employer_id"
     t.datetime "created_at"
@@ -243,13 +269,29 @@ ActiveRecord::Schema.define(version: 20160412211730) do
     t.string   "linkedin"
     t.datetime "created_at"
     t.datetime "updated_at"
-    t.integer  "employment_status_id",   default: 0, null: false
-    t.integer  "frequency",              default: 1, null: false
-    t.integer  "academic_program_id",    default: 0, null: false
-    t.integer  "graduation_id",          default: 0, null: false
-    t.integer  "visibility_id",          default: 0, null: false
-    t.integer  "dschool_status_id",      default: 0, null: false
-    t.integer  "group_id",               default: 0, null: false
+    t.integer  "employment_status_id",      default: 0, null: false
+    t.integer  "frequency",                 default: 1, null: false
+    t.integer  "academic_program_id",       default: 0, null: false
+    t.integer  "graduation_id",             default: 0, null: false
+    t.integer  "visibility_id",             default: 0, null: false
+    t.integer  "dschool_status_id",         default: 0, null: false
+    t.integer  "group_id",                  default: 0, null: false
+    t.string   "hidden_title"
+    t.string   "hidden_birth_name"
+    t.integer  "hidden_graduation_id"
+    t.integer  "hidden_graduation_year"
+    t.string   "hidden_private_email"
+    t.string   "hidden_alumni_email"
+    t.string   "hidden_additional_email"
+    t.string   "hidden_last_employer"
+    t.string   "hidden_current_position"
+    t.string   "hidden_street"
+    t.string   "hidden_location"
+    t.string   "hidden_postcode"
+    t.string   "hidden_country"
+    t.string   "hidden_phone_number"
+    t.string   "hidden_comment"
+    t.string   "hidden_agreed_alumni_work"
   end
 
   create_table "users", force: true do |t|
